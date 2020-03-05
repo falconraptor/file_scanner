@@ -10,3 +10,5 @@ src/
 *.docx
 *.pdf
 *.csv
+*.txt
+*.cmd
