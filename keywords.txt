@@ -1,6 +1,0 @@
-office
-email
-competency
-policies
-tentative
-textbook
