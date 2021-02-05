@@ -1,8 +1,6 @@
 from _csv import writer
 from functools import partial
-from multiprocessing import cpu_count, Pool
 from os.path import basename
-from threading import Thread
 from typing import List
 
 import docx2txt
@@ -21,8 +19,7 @@ def scan_files_process(keywords: List[str], file: str) -> List[bool]:
     else:
         with open(file, 'rt') as process_file:
             process_file_text = process_file.read()
-    r = [k in process_file_text for k in keywords]
-    return r
+    return [k in process_file_text for k in keywords]
 
 
 class Options(QDialog):
@@ -189,6 +186,7 @@ class FileScanner(QMainWindow):
         self.add_keyword.setDisabled(True)
         self.add_keyword.clicked.connect(self.add_keyword_clicked)
         horizontal.addWidget(self.add_keyword)
+        self.new_keyword_text.returnPressed.connect(self.add_keyword.click)
         vertical = QVBoxLayout()
         vertical.addLayout(horizontal)
         self.keyword_list = QListWidget()
@@ -206,6 +204,7 @@ class FileScanner(QMainWindow):
         self.new_keyword_text.setText('')
         self.update_file_headers()
         self.save_keywords.setDisabled(False)
+        self.new_keyword_text.setFocus()
 
     def update_file_headers(self):
         self.file_headers = ['File'] + [self.keyword_list.item(i).text() for i in range(self.keyword_list.count())]
