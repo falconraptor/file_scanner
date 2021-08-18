@@ -1,25 +1,24 @@
 from _csv import writer
 from functools import partial
+from multiprocessing import cpu_count, Pool
 from os.path import basename
 from typing import List
 
 import docx2txt
-from PyPDF2 import PdfFileReader
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QApplication, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QGridLayout, QStyleFactory, QListWidget, QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView, QMainWindow, QWidget, QDialog, QColorDialog
+from pdfminer.high_level import extract_text
 
 
 def scan_files_process(keywords: List[str], file: str) -> List[bool]:
     if file[-4:] == '.pdf':
-        with open(file, 'rb') as process_file:
-            pdf = PdfFileReader(process_file)
-            process_file_text = '\n'.join(pdf.getPage(i).extractText().upper() for i in range(pdf.getNumPages()))
+        process_file_text = extract_text(file)
     elif file[-4:] == 'docx':
         process_file_text = docx2txt.process(file).upper()
     else:
         with open(file, 'rt') as process_file:
             process_file_text = process_file.read()
-    return [k in process_file_text for k in keywords]
+    return [k in process_file_text.lower() for k in keywords]
 
 
 class Options(QDialog):
@@ -154,10 +153,10 @@ class FileScanner(QMainWindow):
             self.update_file_headers()
 
     def scan_files_clicked(self):
-        # with Pool(min(cpu_count(), len(self.file_names))) as pool:
-        f = partial(scan_files_process, [self.keyword_list.item(i).text().upper() for i in range(self.keyword_list.count())])
-        r = [f(file) for file in self.file_names]
-        # r = pool.map(f, self.file_names)
+        with Pool(min(cpu_count(), len(self.file_names))) as pool:
+            f = partial(scan_files_process, [self.keyword_list.item(i).text().lower() for i in range(self.keyword_list.count())])
+            # r = [f(file) for file in self.file_names]
+            r = pool.map(f, self.file_names)
         for row, has_list in enumerate(r):
             for i, has in enumerate(has_list):
                 widget = QTableWidgetItem(self.options.found_text if has else self.options.missing_text)
@@ -166,7 +165,7 @@ class FileScanner(QMainWindow):
         self.export_results.setDisabled(False)
 
     def add_files_clicked(self):
-        files = [file for file in QFileDialog.getOpenFileNames(self, 'Files to Scan', '.', 'Word Documents (*.docx);;PDF Documents (*.pdf);;Text (*.txt);;All Files (*)')[0] if file[-3:] in {'pdf', 'ocx', 'txt', '.py', 'csv', 'tsv'}]
+        files = QFileDialog.getOpenFileNames(self, 'Files to Scan', '.', 'PDF Documents (*.pdf);;Word Documents (*.docx);;Text (*.txt);;All Files (*)')[0]
         if files:
             count = self.files.rowCount()
             self.files.setRowCount(count + len(files))
